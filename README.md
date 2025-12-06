@@ -33,4 +33,13 @@ This project uses **direct register access (PORT, DDR, PINx)** to control two LE
 
 ##  Expected Output
 - Default: **LED1 ON**, **LED2 OFF**  
-- After pressing button: **LED1 OFF**, **LED2 BLINKING**  
+- After pressing button: **LED1 OFF**, **LED2 BLINKING**
+
+ ##  Simulation (TinkerCad)
+
+You can view and test the full circuit and code on TinkerCad:  
+
+ **TinkerCad Project Link:**  
+**https://www.tinkercad.com/things/0tpFZtYX7rU-surprising-habbi-leelo?sharecode=PT-4j8QcRYN70GHRgecWcGFcuWLkYKxQ7y5PbQp37lw**
+
+
