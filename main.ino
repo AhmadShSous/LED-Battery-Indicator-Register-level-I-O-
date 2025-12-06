@@ -1,106 +1,54 @@
-//C++
-#define RS 12
-#define EN 11
-#define D4 5
-#define D5 4
-#define D6 3
-#define D7 2
+#define LED1 PB3   // LED1 on Pin 11
+#define LED2 PD6   // LED2 on Pin 6
+#define BUTTON PD2 // Button on Pin 2
 
-// Send a short pulse to the Enable pin to tell LCD to read data
-void pulseEnable() {
-  digitalWrite(EN, LOW);
-  delayMicroseconds(1);
-  digitalWrite(EN, HIGH);
-  delayMicroseconds(1);
-  digitalWrite(EN, LOW);
-  delayMicroseconds(50);
-}
-
-// Send 4 bits to the LCD (one nibble)
-void sendNibble(uint8_t nibble) {
-  digitalWrite(D4, (nibble >> 0) & 1);
-  digitalWrite(D5, (nibble >> 1) & 1);
-  digitalWrite(D6, (nibble >> 2) & 1);
-  digitalWrite(D7, (nibble >> 3) & 1);
-  pulseEnable();
-}
-
-// Send a full byte (8 bits) by splitting it into two nibbles
-void sendByte(uint8_t b, uint8_t rs) {
-  digitalWrite(RS, rs);  // rs=0 → command, rs=1 → data
-  sendNibble(b >> 4);    // send high 4 bits
-  sendNibble(b & 0x0F);  // send low 4 bits
-}
-
-// Send a command to the LCD
-void lcd_command(uint8_t cmd) {
-  sendByte(cmd, 0);
-  delay(2);
-}
-
-// Send a single character to the LCD
-void lcd_data(uint8_t data) {
-  sendByte(data, 1);
-}
-
-// Print a full string on the LCD
-void lcd_print(const char *s) {
-  while (*s) lcd_data(*s++);
-}
-
-// Initialize LCD in 4-bit mode
-void lcd_init() {
-  delay(50);  // wait for LCD to power up
-
-  digitalWrite(RS, LOW);
-  digitalWrite(EN, LOW);
-
-  // Initialization sequence for 4-bit mode
-  sendNibble(0x03);
-  delay(5);
-  sendNibble(0x03);
-  delayMicroseconds(150);
-  sendNibble(0x03);
-  sendNibble(0x02);  // switch to 4-bit mode
-
-  lcd_command(0x28); // 4-bit, 2-line mode
-  lcd_command(0x0C); // display ON, cursor OFF
-  lcd_command(0x01); // clear display
-  delay(2);
-  lcd_command(0x06); // auto-increment cursor
-}
-
-// Scroll display left by one step
-void lcd_scroll_left() {
-  lcd_command(0x18);
-}
+volatile bool batteryLowMode = false; //first the buttery is OK
 
 void setup() {
-  // Set LCD pins as outputs
-  pinMode(RS, OUTPUT);
-  pinMode(EN, OUTPUT);
-  pinMode(D4, OUTPUT);
-  pinMode(D5, OUTPUT);
-  pinMode(D6, OUTPUT);
-  pinMode(D7, OUTPUT);
-
-  lcd_init();  // start LCD
-
-  lcd_print("Hello Ahmad12!");  // print initial text
+  DDRB |= (1 << LED1);//led1 output
+  DDRD |= (1 << LED2);//led2 output
+  DDRD &= ~(1 << BUTTON); //button input
+  PORTD |= (1 << BUTTON); // enable pull-up ddr=0, port=1
 }
 
 void loop() {
+  // ==============================
+  //Read button (toggle mode)
+  // ==============================
+  //when press the button PIND= 0X0100 0(0)00 (PULL UP) & 0000 0(1)00 = 0 SO NOT IT
+  if (!(PIND & (1 << BUTTON))) {   // if the button pressed = LOW
+    delay(50);                         // simple debounce
+  	batteryLowMode = !batteryLowMode; // toggle buttery low 
 
-  // Number of scroll steps before text resets
-  int total_shifts = 16;
-
-  // Do the scrolling animation
-  for (int i = 0; i < total_shifts; i++) {
-    delay(350);
-    lcd_scroll_left();
+   while (!(PIND & (1 << BUTTON))); // wait until button released
+      delay(50);
   }
 
-  // Return the text to the starting position
-  lcd_command(0x02);  // Return Home command
-  delay(500);
+  // ==============================
+  // Battery OK Mode
+  // ==============================
+  if (!batteryLowMode) {
+    // LED1 ON so PB3 HIGH
+    PORTB |= (1 << LED1);
+
+    // LED2 OFF so PD6 LOW
+    PORTD &= ~(1 << LED2);
+
+  }
+
+  // ==============================
+  // Battery LOW Mode (blink LED2)
+  // ==============================
+  else {
+    // LED1 OFF
+    PORTB &= ~(1 << LED1);
+
+    // LED2 Blink at 2 Hz → toggle every 250ms
+    static unsigned long prev = 0;
+    if (millis() - prev >= 250) {
+      prev = millis();
+      PORTD ^= (1 << LED2);   // Toggle LED2 using XOR
+    }
+  }
 }
+
